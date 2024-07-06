@@ -1,13 +1,13 @@
 ;;; ob-elixir.el --- org-babel functions for elixir evaluation
 
-;; Copyright (C) 2015 ZHOU Feng
+;; Copyright (C) 2024 Raghuvir Kasturi
 
-;; Author: ZHOU Feng <zf.pascal@gmail.com>
-;; URL: http://github.com/zweifisch/ob-elixir
+;; Author: Raghuvir Kasturi <raghuvir.kasturi@gmail.com>
+;; URL: http://github.com/d4ncer/ob-elixir
 ;; Keywords: org babel elixir
 ;; Version: 0.0.1
 ;; Created: 28th Sep 2015
-;; Package-Requires: ((org "8"))
+;; Package-Requires: ((org "8") (s "1.13.1"))
 
 ;; This file is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 
 ;;; Code:
 (require 'ob)
+(require 's)
 
 (defvar ob-elixir-process-output "")
 
@@ -51,14 +52,15 @@
     (ob-elixir-eval session (format "import_file(\"%s\")" tmp))))
 
 (defun ob-elixir-eval (session body)
-  (let ((result (ob-elixir-eval-in-repl session body)))
-    (replace-regexp-in-string
-    "^import_file([^)]+)\n" ""
-     (replace-regexp-in-string
-      "\r" ""
-      (replace-regexp-in-string
-       "\n\\(\\(iex\\|[.]+\\)\\(([^@]+@[^)]+)[0-9]+\\|([0-9]+)\\)> \\)+" ""
-       result)))))
+  (let* ((result (ob-elixir-eval-in-repl session body))
+         (patterns (reverse (list (rx "[A[J")
+                                  (rx "iex(" (zero-or-more digit) ")> ")
+                                  (rx "import_file(" (zero-or-more anything) ")" eol)
+                                  "\r")))
+         (interm result))
+    (dolist (pattern patterns)
+      (setq interm (replace-regexp-in-string pattern "" interm)))
+    (s-trim interm)))
 
 (defun ob-elixir-ensure-session (session params)
   (let ((name (format "*elixir-%s*" session)))
